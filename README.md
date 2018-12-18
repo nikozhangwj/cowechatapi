@@ -3,6 +3,7 @@
 **例子:**
 
 (```)
+
     import Alert
 
     bot = Alert()
