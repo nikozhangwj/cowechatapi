@@ -10,7 +10,7 @@ bot.login(ID='123', SECRET='safadsfs')
 bot.send(content="今天天气好吗?")
 ```
 
-------
+```
 output:
     {'errcode': 0, 'errmsg': 'ok', 'invaliduser': ''}
-------
+```
