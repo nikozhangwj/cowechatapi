@@ -3,11 +3,11 @@
 **例子:**
 
 (```)
-import Alert
+    import Alert
 
-bot = Alert()
-bot.login(ID='123', SECRET='safadsfs')
-bot.send(content="今天天气好吗?")
+    bot = Alert()
+    bot.login(ID='123', SECRET='safadsfs')
+    bot.send(content="今天天气好吗?")
 (```)
 
 ------
