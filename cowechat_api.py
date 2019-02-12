@@ -213,3 +213,4 @@ class CoWechatAPI(object):
         response = requests.post(url=upload_url, files=files)
         logging.info(response.status_code)
         logging.info(response.text)
+        return response.text
