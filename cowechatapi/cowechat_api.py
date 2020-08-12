@@ -210,10 +210,3 @@ class CoWechatAPI(object):
         logging.info(response.status_code)
         logging.info(response.text)
         return response.text
-
-
-if __name__ == '__main__':
-    cowechat = CoWechatAPI(coid="wwa349bc84e1592cc8", secret="ZHt9fsd5ie0wQfKQr6cKNXw1qJ12rdtbW3oIxl9lhm8",
-                           agentid=1000003)
-    # cowechat.send(msg_type="text", content="Test msg", to_user="ZhangWeiJie")
-    print(cowechat.upload(filetype="image", fileurl="C:\/Users\/33474\/Pictures\/timg.jpg"))

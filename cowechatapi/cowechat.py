@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from argparse import ArgumentParser
-from cowechat_api import CoWechatAPI
+from cowechatapi.cowechat_api import CoWechatAPI
 
 
 def main():

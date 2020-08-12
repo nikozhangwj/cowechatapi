@@ -1,2 +1,9 @@
 /.token_cache
 /*.log
+/dist
+build/
+*.egg
+*.egg-info
+*.pyc
+env*/
+venv*/
