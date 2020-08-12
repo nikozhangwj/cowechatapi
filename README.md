@@ -1,12 +1,12 @@
 # CoropWechatSendMsgAPI
+## 通过调用API接口发送消息
 调用企业微信API接口发送消息给指定用户
 **文本消息例子:**
 
 ```python
 from cowechat_api import CoWechatAPI
 
-bot = CoWechatAPI()
-bot.login(ID='123', SECRET='safadsfs')
+bot = CoWechatAPI(coid="your_company_id", secret="your_app_secret",agentid=1000001)
 bot.send(to_user="USER_NAME", msg_type="text", content="今天天气好吗?")
 ```
 
@@ -15,8 +15,7 @@ bot.send(to_user="USER_NAME", msg_type="text", content="今天天气好吗?")
 ```python
 from cowechat_api import CoWechatAPI
 
-bot = CoWechatAPI()
-bot.login(ID='123', SECRET='safadsfs')
+bot = CoWechatAPI(coid="your_company_id", secret="your_app_secret",agentid=1000001)
 bot.send(to_user="USER_NAME", msg_type="file", media_id="MEDIA_ID")
 ```
 
@@ -24,8 +23,7 @@ bot.send(to_user="USER_NAME", msg_type="file", media_id="MEDIA_ID")
 ```python
 from cowechat_api import CoWechatAPI
 
-bot = CoWechatAPI()
-bot.login(ID='123', SECRET='safadsfs')
+bot = CoWechatAPI(coid="your_company_id", secret="your_app_secret",agentid=1000001)
 bot.send(to_user="USER_NAME", msg_type="image", media_id="MEDIA_ID")
 ```
 
@@ -35,7 +33,19 @@ bot.send(to_user="USER_NAME", msg_type="image", media_id="MEDIA_ID")
 ```python
 from cowechat_api import CoWechatAPI
 
-bot = CoWechatAPI()
-bot.login(ID='123', SECRET='safadsfs')
+bot = CoWechatAPI(coid="your_company_id", secret="your_app_secret",agentid=1000001)
 bot.upload(filetype="image", fileurl="FILE_PATH")
+```
+
+## 通过命令行方式发送消息
+
+```shell script
+git clone https://github.com/nikozhangwj/CoropWechatSendMsgAPI.git
+mv CoropWechatSendMsgAPI /usr/local/cowechatApi
+chmod +x /usr/local/cowechatApi/cowechat
+ln -s /usr/local/bin/cowechat /usr/local/cowechatApi/cowechat
+# 发送文本消息
+cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m text -c "content" --user [USER_NAME]
+# 发送图片消息
+cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m image --media [media_id] --user [USER_NAME]
 ```

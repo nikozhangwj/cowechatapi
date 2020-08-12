@@ -4,29 +4,23 @@
 # py_ver: py3
 
 """
-first version
 调用企业微信消息接口发送消息
 可以指定某个用户、某个部门或者某个标签内的所有人员
-初始化后需要调用login功能输入企业ID和消息应用密钥
+初始化对象需要输入企业ID,应用Secret和AgentId
 密钥需要现在企业微信后台建立应用后才能获取
 该代码需要在python3下的环境执行，不然会报消息类型错误
-20190212 version
-重构代码
-增加上传临时素材功能
-增加发送的消息类型 text image file voice video
-增加简易日志输出
+UPDATE: 20200812
 """
 
 import os
 import json
 import requests
 import logging
-from urllib import request
+import platform
 from datetime import datetime
 
 
 class CoWechatAPI(object):
-
     LOG_DATE = datetime.now()
     LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     LOG_FILENAME = 'CWAPI.{}.log'.format(LOG_DATE.strftime("%Y%m%d"))
@@ -37,25 +31,33 @@ class CoWechatAPI(object):
         format=LOG_FORMAT,
         datefmt=DATE_FORMAT
     )
+    try:
+        tmp_folder = os.environ['TMP']
+    except KeyError:
+        if platform.system() == "Linux":
+            tmp_folder = os.environ['HOME']
+        elif platform.system() == "Windows":
+            tmp_folder = os.environ['HOMEPATH']
+        else:
+            tmp_folder = os.getcwd()
 
-    def __init__(self):
+    def __init__(self, coid, secret, agentid):
         # 设置企业微信的coropid和corpsecret, cache用来缓存token
-        self.ID = ''
-        self.SECRET = ''
-        self.agentid = 1000001
-        self.cache = os.path.join(os.getcwd(), '.token_cache')
+        self.ID = coid
+        self.SECRET = secret
+        self.agentid = agentid
+        self.token = ""
+        self.cache = os.path.join(self.tmp_folder, '.token_cache')
         # 重试次数
         self.retry_count = 5
+        self.login()
 
     # 企业微信的coropid和corpsecret写死的话不用执行login
-    def login(self, ID, SECRET, agentid):
-        if not ID and not SECRET:
+    def login(self):
+        if not self.ID and not self.SECRET:
             logging.error('Please input valid ID and SECRET.')
             return False
-        self.ID = ID
-        self.SECRET = SECRET
-        self.agentid = agentid
-        return True
+        self.token = self.get_access_token()
 
     # 用来保存token到缓存文件
     def save_token(self, token_dict):
@@ -89,13 +91,11 @@ class CoWechatAPI(object):
         token_url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={}&corpsecret={}".format(self.ID,
                                                                                                   self.SECRET)
         try:
-            res = request.urlopen(token_url)
-            # print(res.read())
+            res = requests.get(token_url)
         except BaseException as error:
             print(error)
             return False
-        res_data = res.read()
-        res_dict = json.loads(res_data.decode('utf-8'))
+        res_dict = res.json()
         logging.info('Get token from token_url.')
         logging.debug(res_dict)
         try:
@@ -129,21 +129,21 @@ class CoWechatAPI(object):
     def send(self, msg_type=None, to_user="", to_party="", to_tag="", content=None, media_id=None):
 
         send_data = {
-           "touser": to_user,
+            "touser": to_user,
             "toparty": to_party,
             "totag": to_tag,
-           "msgtype": msg_type,
-           "agentid": self.agentid,
-           "safe": 0
+            "msgtype": msg_type,
+            "agentid": self.agentid,
+            "safe": 0
         }
 
         if not msg_type:
             logging.error('msg_type can not be None.')
-            return False
+            raise Exception("msg_type can not be None.")
 
         if msg_type == "text":
             send_data["text"] = {
-               "content": content
+                "content": content
             }
             logging.info('Start send {} message.'.format(msg_type))
             logging.debug(send_data)
@@ -175,31 +175,27 @@ class CoWechatAPI(object):
             logging.debug(send_data)
         else:
             logging.error("data error")
-            return False
+            raise Exception("Message type:{} or arguments invalid, please check yourself.".format(msg_type))
 
         count = 0
         while count < self.retry_count:
-            if self.send_util(send_data=send_data):
+            if self._send_util(send_data=send_data):
                 return True
             count += 1
         return False
 
     # 消息发送方法
-    def send_util(self, send_data):
-        token = self.get_access_token()
-        send_url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}".format(token)
-        json_data = json.dumps(send_data).encode('utf-8')
-        req = request.Request(url=send_url, data=json_data)
-        res = request.urlopen(req)
-        res_data = res.read()
-        res_dict = json.loads(res_data.decode('utf-8'))
+    def _send_util(self, send_data):
+        send_url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}".format(self.token)
+        res = requests.post(send_url, json=send_data)
+        res_dict = res.json()
+        logging.debug(res_dict)
         if res_dict["errcode"] == 0:
-            # print('Send message response.')
             logging.info('Send message response: ' + res_dict["errmsg"])
             return True
         else:
-            logging.error('Send message error response: ' + res_dict)
-            return False
+            logging.error('Send message error response: ' + res_dict["errmsg"])
+            raise Exception(res_dict["errmsg"])
 
     # 上传临时素材
     def upload(self, filetype, fileurl):
@@ -214,3 +210,10 @@ class CoWechatAPI(object):
         logging.info(response.status_code)
         logging.info(response.text)
         return response.text
+
+
+if __name__ == '__main__':
+    cowechat = CoWechatAPI(coid="wwa349bc84e1592cc8", secret="ZHt9fsd5ie0wQfKQr6cKNXw1qJ12rdtbW3oIxl9lhm8",
+                           agentid=1000003)
+    # cowechat.send(msg_type="text", content="Test msg", to_user="ZhangWeiJie")
+    print(cowechat.upload(filetype="image", fileurl="C:\/Users\/33474\/Pictures\/timg.jpg"))
