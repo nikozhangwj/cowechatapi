@@ -43,7 +43,7 @@ bot.upload(filetype="image", fileurl="FILE_PATH")
 git clone https://github.com/nikozhangwj/CoropWechatSendMsgAPI.git
 mv CoropWechatSendMsgAPI /usr/local/cowechatApi
 chmod +x /usr/local/cowechatApi/cowechat
-ln -s /usr/local/bin/cowechat /usr/local/cowechatApi/cowechat
+ln -s /usr/local/cowechatApi/cowechat /usr/local/bin/cowechat
 # 发送文本消息
 cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m text -c "content" --user [USER_NAME]
 # 发送图片消息
