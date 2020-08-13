@@ -1,10 +1,15 @@
 # CoropWechatSendMsgAPI
-目前这个工具需要使用到python3和requests模块
+这是一个发送消息到企业微信的接口工具
+仅支持在python3环境下执行，支持系统:Linux、windows其他暂未验证
+消息类型支持: 文本、图片、声音、视频和文件
 
 ## 安装依赖
+```shell script
+pip install requests
+```
 ## pip安装 ##
 ```shell script
-pip3 install -r requirements.txt
+pip install cowechatapi
 ```
 
 ## 通过调用API接口发送消息
@@ -47,14 +52,10 @@ bot.upload(filetype="image", fileurl="FILE_PATH")
 
 ## 通过命令行方式发送消息
 
+**例子:**
 ```shell script
-# 安装工具
-git clone https://github.com/nikozhangwj/CoropWechatSendMsgAPI.git
-mv CoropWechatSendMsgAPI /usr/local/cowechatApi
-chmod +x /usr/local/cowechatApi/cowechat
-ln -s /usr/local/cowechatApi/cowechat /usr/local/bin/cowechat
 # 发送文本消息
-cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m text -c "content" --user [USER_NAME]
+python3 -m cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m text -c "content" --user [USER_NAME]
 # 发送图片消息
-cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m image --media [media_id] --user [USER_NAME]
+python3 -m cowechat -i [your_company_id] -s [your_app_secret] -a [your_agentid] -m image --media [media_id] --user [USER_NAME]
 ```

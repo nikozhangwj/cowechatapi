@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+# !/usr/bin/env python3
 # encoding: utf-8
 # author: niko.zhang
 # py_ver: py3
@@ -31,6 +31,7 @@ class CoWechatAPI(object):
         format=LOG_FORMAT,
         datefmt=DATE_FORMAT
     )
+    # 通过环境变量获取系统临时目录作为缓存文件的存放位置
     try:
         tmp_folder = os.environ['TMP']
     except KeyError:
@@ -39,27 +40,29 @@ class CoWechatAPI(object):
         elif platform.system() == "Windows":
             tmp_folder = os.environ['HOMEPATH']
         else:
-            tmp_folder = os.getcwd()
+            tmp_folder = os.getcwd()  # 如果环境变量中没有临时目录则选择当前目录作为缓存目录
 
     def __init__(self, coid, secret, agentid):
-        # 设置企业微信的coropid和corpsecret, cache用来缓存token
+        # 初始化对象需要输入企业微信的company_id、应用的secret和agentid
         self.ID = coid
         self.SECRET = secret
         self.agentid = agentid
+        # access_token
         self.token = ""
+        # 缓存access_token的文件
         self.cache = os.path.join(self.tmp_folder, '.token_cache')
-        # 重试次数
+        # 请求重试次数
         self.retry_count = 5
         self.login()
 
-    # 企业微信的coropid和corpsecret写死的话不用执行login
+    # 登录功能
     def login(self):
         if not self.ID and not self.SECRET:
             logging.error('Please input valid ID and SECRET.')
             return False
         self.token = self.get_access_token()
 
-    # 用来保存token到缓存文件
+    # 用来缓存token到本地文件
     def save_token(self, token_dict):
         token_dict['date'] = datetime.strftime(datetime.now(), "%Y-%m-%d %H%M%S")
         with open(self.cache, 'wt') as fhandler:
@@ -86,7 +89,7 @@ class CoWechatAPI(object):
                 logging.info('Cache token is valid, get token from cache.')
                 return True
 
-    # 通过企业微信API重新获取token
+    # 通过企业微信API获取access_token
     def get_access_token_url(self):
         token_url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={}&corpsecret={}".format(self.ID,
                                                                                                   self.SECRET)
@@ -106,7 +109,7 @@ class CoWechatAPI(object):
         self.save_token(res_dict)
         return res_dict['access_token']
 
-    # 通过缓存文件获取token
+    # 通过缓存文件获取access_token
     def get_access_token_cache(self):
         with open(self.cache, 'rt') as fhandler:
             data = json.loads(fhandler.read())
@@ -118,7 +121,7 @@ class CoWechatAPI(object):
                 logging.error(error)
                 return False
 
-    # 获取token功能
+    # 获取access_token
     def get_access_token(self):
         if self.token_valid():
             return self.get_access_token_cache()
