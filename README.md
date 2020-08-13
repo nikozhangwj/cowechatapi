@@ -1,4 +1,4 @@
-# CoropWechatSendMsgAPI
+# cowechatapi
 这是一个发送消息到企业微信的接口工具
 仅支持在python3环境下执行，支持系统:Linux、windows其他暂未验证
 消息类型支持: 文本、图片、声音、视频和文件
