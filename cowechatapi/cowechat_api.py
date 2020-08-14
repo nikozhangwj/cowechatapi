@@ -16,32 +16,19 @@ import os
 import json
 import requests
 import logging
+from logging import handlers
 import platform
 from datetime import datetime
 
 
 class CoWechatAPI(object):
-    # 通过环境变量获取系统临时目录作为缓存文件的存放位置
-    if platform.system() == "Linux":
-        tmp_folder = os.environ.get('HOME', '/tmp')
-    elif platform.system() == "Windows":
-        # 如果环境变量中没有临时目录则选择当前目录作为缓存目录
-        tmp_folder = os.environ.get('TMP') or os.environ.get('HOMEPATH') or os.getcwd()
-    else:
-        tmp_folder = os.getcwd()
 
-    LOG_DATE = datetime.now()
-    LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    LOG_FILENAME = os.path.join(tmp_folder, 'CWAPI.{}.log'.format(LOG_DATE.strftime("%Y%m%d")))
-    DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
-    logging.basicConfig(
-        filename=LOG_FILENAME,
-        level=logging.INFO,
-        format=LOG_FORMAT,
-        datefmt=DATE_FORMAT
-    )
-
-    def __init__(self, coid, secret, agentid, retry=5):
+    def __init__(self, coid, secret, agentid, retry=5, logger=None):
+        # init Object
+        # 初始化临时目录
+        self._init_tmp_folder()
+        # 可以传入自定义的logger
+        self._init_logger(logger)
         # 初始化对象需要输入企业微信的company_id、应用的secret和agentid
         self.ID = coid
         self.SECRET = secret
@@ -54,10 +41,41 @@ class CoWechatAPI(object):
         self.retry_count = retry
         self.login()
 
+    def _init_tmp_folder(self):
+        # 通过环境变量获取系统临时目录作为缓存文件的存放位置
+        if platform.system() == "Linux":
+            self.tmp_folder = os.environ.get('HOME', '/tmp')
+        elif platform.system() == "Windows":
+            # 如果环境变量中没有临时目录则选择当前目录作为缓存目录
+            self.tmp_folder = os.environ.get('TMP') or os.environ.get('HOMEPATH') or os.getcwd()
+        else:
+            self.tmp_folder = os.getcwd()
+
+    def _init_logger(self, logger):
+        if not logger:
+            LOG_FORMAT = "%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"
+            DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
+            api_formatter = logging.Formatter(LOG_FORMAT)
+            api_formatter.datefmt = DATE_FORMAT
+            api_handler = handlers.TimedRotatingFileHandler(
+                os.path.join(self.tmp_folder, 'cowechatapi.log'),
+                when='w0',
+                backupCount=7
+            )
+            api_handler.setFormatter(api_formatter)
+            logging.basicConfig(
+                level=logging.INFO,
+                format=LOG_FORMAT,
+                datefmt=DATE_FORMAT
+            )
+            logger = logging.getLogger(__name__)
+            logger.addHandler(api_handler)
+        self.logger = logger
+
     # 登录功能
     def login(self):
         if not self.ID and not self.SECRET:
-            logging.error('Please input valid ID and SECRET.')
+            self.logger.error('Please input valid ID and SECRET.')
             return False
         self.token = self.get_access_token()
 
@@ -70,22 +88,22 @@ class CoWechatAPI(object):
     # 通过时间判断token是否有效，token有效时间为两个小时
     def token_valid(self):
         if not os.path.exists(self.cache):
-            logging.info('token_cache has not found.')
+            self.logger.info('token_cache has not found.')
             return False
         with open(self.cache, 'rt') as fhandler:
             data = json.loads(fhandler.read())
             if data['errmsg'] != 'ok':
-                logging.error('Cache has no token but error message: ' + data['errmsg'])
+                self.logger.error('Cache has no token but error message: ' + data['errmsg'])
                 return False
             else:
-                logging.info('Cache has no error message.')
+                self.logger.info('Cache has no error message.')
             token_date = data['date']
             usetime = (datetime.now() - datetime.strptime(token_date, "%Y-%m-%d %H%M%S")).seconds
             if usetime >= 7200:
-                logging.info('Cache token is overtime, get new token from url.')
+                self.logger.info('Cache token is overtime, get new token from url.')
                 return False
             else:
-                logging.info('Cache token is valid, get token from cache.')
+                self.logger.info('Cache token is valid, get token from cache.')
                 return True
 
     # 通过企业微信API获取access_token
@@ -95,15 +113,15 @@ class CoWechatAPI(object):
         try:
             res = requests.get(token_url)
         except BaseException as error:
-            print(error)
+            self.logger.exception(error)
             return False
         res_dict = res.json()
-        logging.info('Get token from token_url.')
-        logging.debug(res_dict)
+        self.logger.info('Get token from token_url.')
+        self.logger.debug(res_dict)
         try:
             res_dict.get('access_token')
         except KeyError as error:
-            logging.error(error)
+            self.logger.exception(error)
             return False
         self.save_token(res_dict)
         return res_dict['access_token']
@@ -112,12 +130,12 @@ class CoWechatAPI(object):
     def get_access_token_cache(self):
         with open(self.cache, 'rt') as fhandler:
             data = json.loads(fhandler.read())
-            logging.info('Get token from cache.')
-            logging.debug(data)
+            self.logger.info('Get token from cache.')
+            self.logger.debug(data)
             try:
                 return data['access_token']
             except KeyError as error:
-                logging.error(error)
+                self.logger.exception(error)
                 return False
 
     # 获取access_token
@@ -140,44 +158,45 @@ class CoWechatAPI(object):
         }
 
         if not msg_type:
-            logging.error('msg_type can not be None.')
+            self.logger.error('msg_type can not be None.')
             raise Exception("msg_type can not be None.")
 
         if msg_type == "text":
             send_data["text"] = {
                 "content": content
             }
-            logging.info('Start send {} message.'.format(msg_type))
-            logging.debug(send_data)
+            self.logger.info('Start send {} message:{}.'.format(msg_type, content))
+            self.logger.debug(send_data)
         elif msg_type == "image" and media_id:
             send_data["image"] = {
                 "media_id": media_id
             }
-            logging.info('Start send {} message.'.format(msg_type))
-            logging.debug(send_data)
+            self.logger.info('Start send {} message:{}.'.format(msg_type, media_id))
+            self.logger.debug(send_data)
         elif msg_type == "voice" and media_id:
             send_data["voice"] = {
                 "media_id": media_id
             }
-            logging.info('Start send {} message.'.format(msg_type))
-            logging.debug(send_data)
+            self.logger.info('Start send {} message:{}.'.format(msg_type, media_id))
+            self.logger.debug(send_data)
         elif msg_type == "video" and media_id:
             send_data["video"] = {
                 "media_id": media_id,
                 "title": "Title",
                 "description": "Description"
             }
-            logging.info('Start send {} message.'.format(msg_type))
-            logging.debug(send_data)
+            self.logger.info('Start send {} message:{}.'.format(msg_type, media_id))
+            self.logger.debug(send_data)
         elif msg_type == "file" and media_id:
             send_data["file"] = {
                 "media_id": media_id
             }
-            logging.info('Start send {} message.'.format(msg_type))
-            logging.debug(send_data)
+            self.logger.info('Start send {} message:{}.'.format(msg_type, media_id))
+            self.logger.debug(send_data)
         else:
-            logging.error("data error")
-            raise Exception("Message type:{} or arguments invalid, please check yourself.".format(msg_type))
+            _err_msg = "Message type:{} or arguments invalid, please check yourself.".format(msg_type)
+            self.logger.error(_err_msg)
+            raise Exception(_err_msg)
 
         count = 0
         while count < self.retry_count:
@@ -191,24 +210,24 @@ class CoWechatAPI(object):
         send_url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}".format(self.token)
         res = requests.post(send_url, json=send_data)
         res_dict = res.json()
-        logging.debug(res_dict)
+        self.logger.debug(res_dict)
         if res_dict["errcode"] == 0:
-            logging.info('Send message response: ' + res_dict["errmsg"])
+            self.logger.info('Send message response: ' + res_dict["errmsg"])
             return True
         else:
-            logging.error('Send message error response: ' + res_dict["errmsg"])
+            self.logger.error('Send message error response: ' + res_dict["errmsg"])
             raise Exception(res_dict["errmsg"])
 
     # 上传临时素材
     def upload(self, filetype, fileurl):
         if not filetype or not fileurl:
-            logging.error("Missing args error")
+            self.logger.error("Missing args error")
         token = self.get_access_token()
         upload_url = "https://qyapi.weixin.qq.com/cgi-bin/media/upload?access_token={}&type={}".format(token, filetype)
         files = {
             'file': open(fileurl, 'rb')
         }
         response = requests.post(url=upload_url, files=files)
-        logging.info(response.status_code)
-        logging.info(response.text)
+        self.logger.info(response.status_code)
+        self.logger.info(response.text)
         return response.text
