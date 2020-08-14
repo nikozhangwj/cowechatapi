@@ -21,9 +21,18 @@ from datetime import datetime
 
 
 class CoWechatAPI(object):
+    # 通过环境变量获取系统临时目录作为缓存文件的存放位置
+    if platform.system() == "Linux":
+        tmp_folder = os.environ.get('HOME', '/tmp')
+    elif platform.system() == "Windows":
+        # 如果环境变量中没有临时目录则选择当前目录作为缓存目录
+        tmp_folder = os.environ.get('TMP') or os.environ.get('HOMEPATH') or os.getcwd()
+    else:
+        tmp_folder = os.getcwd()
+
     LOG_DATE = datetime.now()
     LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    LOG_FILENAME = 'CWAPI.{}.log'.format(LOG_DATE.strftime("%Y%m%d"))
+    LOG_FILENAME = os.path.join(tmp_folder, 'CWAPI.{}.log'.format(LOG_DATE.strftime("%Y%m%d")))
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
     logging.basicConfig(
         filename=LOG_FILENAME,
@@ -31,18 +40,8 @@ class CoWechatAPI(object):
         format=LOG_FORMAT,
         datefmt=DATE_FORMAT
     )
-    # 通过环境变量获取系统临时目录作为缓存文件的存放位置
-    try:
-        tmp_folder = os.environ['TMP']
-    except KeyError:
-        if platform.system() == "Linux":
-            tmp_folder = os.environ['HOME']
-        elif platform.system() == "Windows":
-            tmp_folder = os.environ['HOMEPATH']
-        else:
-            tmp_folder = os.getcwd()  # 如果环境变量中没有临时目录则选择当前目录作为缓存目录
 
-    def __init__(self, coid, secret, agentid):
+    def __init__(self, coid, secret, agentid, retry=5):
         # 初始化对象需要输入企业微信的company_id、应用的secret和agentid
         self.ID = coid
         self.SECRET = secret
@@ -52,7 +51,7 @@ class CoWechatAPI(object):
         # 缓存access_token的文件
         self.cache = os.path.join(self.tmp_folder, '.token_cache')
         # 请求重试次数
-        self.retry_count = 5
+        self.retry_count = retry
         self.login()
 
     # 登录功能
