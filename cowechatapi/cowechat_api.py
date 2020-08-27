@@ -55,14 +55,20 @@ class CoWechatAPI(object):
         if not logger:
             LOG_FORMAT = "%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"
             DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
-            api_formatter = logging.Formatter(LOG_FORMAT)
-            api_formatter.datefmt = DATE_FORMAT
+            formatter = logging.Formatter(LOG_FORMAT)
+            formatter.datefmt = DATE_FORMAT
+            # 输出屏幕
+            stream_formatter = logging.Formatter("%(message)s")
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(stream_formatter)
+            stream_handler.setLevel(logging.ERROR)
+            # 输出文件
             api_handler = handlers.TimedRotatingFileHandler(
                 os.path.join(self.tmp_folder, 'cowechatapi.log'),
                 when='w0',
                 backupCount=7
             )
-            api_handler.setFormatter(api_formatter)
+            api_handler.setFormatter(formatter)
             logging.basicConfig(
                 level=logging.INFO,
                 format=LOG_FORMAT,
@@ -70,6 +76,7 @@ class CoWechatAPI(object):
             )
             logger = logging.getLogger(__name__)
             logger.addHandler(api_handler)
+            logger.addHandler(stream_handler)
         self.logger = logger
 
     # 登录功能
@@ -98,7 +105,7 @@ class CoWechatAPI(object):
             else:
                 self.logger.info('Cache has no error message.')
             token_date = data['date']
-            usetime = (datetime.now() - datetime.strptime(token_date, "%Y-%m-%d %H%M%S")).seconds
+            usetime = (datetime.now() - datetime.strptime(token_date, "%Y-%m-%d %H%M%S")).total_seconds()
             if usetime >= 7200:
                 self.logger.info('Cache token is overtime, get new token from url.')
                 return False
